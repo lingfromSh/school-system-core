@@ -22,12 +22,12 @@ class BaseModelSerializer(ModelSerializer):
             data['id'] = unique_id()
         return super().to_internal_value(data)
 
-    def to_representation(self, instance):
+    def to_representation(self, instance, save_flag=False):
         """
         Object instance -> Dict of primitive datatypes.
         """
-        cache_key = f"{self.Meta.model}::{instance.pk}"
-        if cache.get(cache_key):
+        cache_key = f"{self.Meta.model.__name__}:{instance.pk}"
+        if cache.get(cache_key) and not save_flag:
             return cache.get(cache_key)
         ret = OrderedDict()
         fields = self._readable_fields
@@ -58,6 +58,11 @@ class BaseModelSerializer(ModelSerializer):
     def create(self, validated_data):
         return super().create(validated_data)
 
+    def save(self, **kwargs):
+        instance = super().save(**kwargs)
+        self.to_representation(instance, save_flag=True)
+        return instance
+
 
 class BaseHyperLinkedModelSerializer(HyperlinkedModelSerializer):
     def get_translation(self, choices, value):
@@ -69,7 +74,7 @@ class BaseHyperLinkedModelSerializer(HyperlinkedModelSerializer):
         """
         Object instance -> Dict of primitive datatypes.
         """
-        cache_key = f"{self.Meta.model}::{instance.pk}"
+        cache_key = f"{self.Meta.model.name}:{instance.pk}"
         if cache.get(cache_key):
             return cache[cache_key]
         ret = OrderedDict()
